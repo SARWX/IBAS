@@ -5,6 +5,7 @@
 
 typedef struct {
     char username[MAX_LENGTH];
+    char password[MAX_LENGTH];
     char first_name[MAX_LENGTH];
     char last_name[MAX_LENGTH];
     char middle_name[MAX_LENGTH];
