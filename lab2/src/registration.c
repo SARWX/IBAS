@@ -81,11 +81,11 @@ User registration_get_data() {
 
 void registration_put_data(User user) {
     struct stat st = {0};
-    if (stat("/tmp/.auth_shell", &st) == -1) {
-        mkdir("/tmp/.auth_shell", 0700);
+    if (stat("/home/tnovikov/study/iu6/IBAS/lab2/.auth_shell", &st) == -1) {
+        mkdir("/home/tnovikov/study/iu6/IBAS/lab2/.auth_shell", 0700);
     }
     char filename[256];
-    snprintf(filename, sizeof(filename), "/tmp/.auth_shell/%s.user", user.username);
+    snprintf(filename, sizeof(filename), "/home/tnovikov/study/iu6/IBAS/lab2/.auth_shell/%s.user", user.username);
     FILE *file = fopen(filename, "w");
     if (file == NULL) {
         perror("Ошибка при создании файла пользователя");

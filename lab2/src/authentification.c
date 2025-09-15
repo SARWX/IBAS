@@ -30,10 +30,10 @@
 #include "user.h"
 #include "registration.h"
 
-#define CURRENT_USER_FILE "/tmp/.auth_shell/.current_user"
+#define CURRENT_USER_FILE "/home/tnovikov/study/iu6/IBAS/lab2/.auth_shell/.current_user"
 
 #define WORD_EQ(command) (strcmp(word, command) == 0)
-static enum command {
+enum command {
         REGISTER,
         WHOAMI,
         AUTH,
@@ -45,20 +45,22 @@ static enum command {
         NOT_KNOWN
 };
 
-static enum ret_code {
+enum ret_code {
         OK,
         NOT_OK,
         EXECUTE_COMMAND,
         FILE_NOT_ALLOWED,
+        NOT_FULL_COMMAND,
 };
 
 char *whoami(void);
 int auth(void);
 void execute_command(const char *cmd, const char *arg);
 int is_file_allowed(const char *filename);
+int change_password(void);
 
-static int word_to_command(char *word) {
-        int ret = 0;
+static enum command word_to_command(char *word) {
+        enum command ret = 0;
         if (WORD_EQ("register"))
                 ret = REGISTER;
         else if (WORD_EQ("whoami"))
@@ -83,14 +85,15 @@ static int word_to_command(char *word) {
 
 int main(int argc, char *argv[])
 {
-        int ret_code = NOT_OK;
+        enum ret_code ret_code = NOT_OK;
+        User user;
 #ifdef DEBUG
         for(int i = 0; i < argc; i++) 
                 printf("%d argument: %s\n", i, argv[i]);
 #endif
         switch (word_to_command(argv[1])) {
                 case REGISTER:
-                        User user = registration();
+                        user = registration();
                         print_user(&user);
                         break;
                 case WHOAMI:
@@ -100,13 +103,17 @@ int main(int argc, char *argv[])
                         ret_code = auth();
                         break;
                 case CHANGE_PASSWORD:
-                        // change_password();
+                        change_password();
                         break;
                 case ALLOWED_COMMAND:
                         // execute_command(argv[1], argv[2]);
                         ret_code = EXECUTE_COMMAND;
                         break;
                 case AUTH_ONLY_COMMAND:
+                        if (argc < 2) {
+                            ret_code = NOT_FULL_COMMAND;
+                            break;
+                        }
                         if (is_file_allowed(argv[2]))
                                 ret_code = EXECUTE_COMMAND;
                         else
@@ -116,14 +123,13 @@ int main(int argc, char *argv[])
                         printf("команда %s не известна\n", argv[1]);
                         break;
         }
-        return ret_code;
+        return (int)ret_code;
 }
 
 char *whoami(void) {
     FILE *file;
-    char *filename = "/tmp/.auth_shell/.current_user";
+    char *filename = "/home/tnovikov/study/iu6/IBAS/lab2/.auth_shell/.current_user";
     char *username = NULL;
-    size_t size = 0;
     
     file = fopen(filename, "r");
     if (file == NULL) {
@@ -168,7 +174,7 @@ int auth() {
     printf("Введите пароль: ");
     scanf("%100s", password);
     
-    snprintf(filename, sizeof(filename), "/tmp/.auth_shell/%s.user", username);
+    snprintf(filename, sizeof(filename), "/home/tnovikov/study/iu6/IBAS/lab2/.auth_shell/%s.user", username);
     
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -191,7 +197,7 @@ int auth() {
         printf("Аутентификация успешна!\n");
         
         // Сохраняем текущего пользователя
-        FILE *current = fopen("/tmp/.auth_shell/.current_user", "w");
+        FILE *current = fopen("/home/tnovikov/study/iu6/IBAS/lab2/.auth_shell/.current_user", "w");
         if (current) {
             fprintf(current, "%s\n", username);
             fclose(current);
@@ -204,8 +210,9 @@ int auth() {
 }
 
 int is_file_allowed(const char *filename) {
+    char *attr_name;
     char *current_user = whoami();
-    
+   
     if (current_user == NULL) {
         fprintf(stderr, "Вы не авторизировались\n");
         return 0;
@@ -223,10 +230,124 @@ int is_file_allowed(const char *filename) {
         free(current_user);
         return 0;
     }
-    
-    // Проверяем расширенный атрибут
-    int result = (getxattr(filename, current_user, NULL, 0) >= 0);
-    
+
+    attr_name = malloc(strlen(current_user) + 6); // "user." + строка + нулевой байт
+    if (attr_name == NULL)
+        return 1;
+    sprintf(attr_name, "user.%s", current_user);
     free(current_user);
+
+    // Проверяем расширенный атрибут
+    int result = (getxattr(filename, attr_name, NULL, 0) >= 0);
+    
+    free(attr_name);
     return result;
+}
+
+int change_password() {
+    char username[MAX_LENGTH];
+    char current_password[MAX_LENGTH];
+    char new_password[MAX_LENGTH];
+    char confirm_password[MAX_LENGTH];
+    char filename[250];
+    
+    printf("=== СМЕНА ПАРОЛЯ ===\n");
+    
+    // Получаем текущего пользователя (если он аутентифицирован)
+    char *current_user = whoami();
+    if (current_user) {
+        strncpy(username, current_user, MAX_LENGTH);
+        printf("Пользователь: %s\n", username);
+    } else {
+        printf("Введите username: ");
+        scanf("%100s", username);
+    }
+    
+    printf("Введите текущий пароль: ");
+    scanf("%100s", current_password);
+    
+    // Проверяем текущий пароль
+    snprintf(filename, sizeof(filename), "/home/tnovikov/study/iu6/IBAS/lab2/.auth_shell/%s.user", username);
+    
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Пользователь не найден\n");
+        return 0;
+    }
+    
+    char line[256];
+    char stored_password[MAX_LENGTH] = {0};
+    int password_found = 0;
+    
+    while (fgets(line, sizeof(line), file)) {
+        if (strncmp(line, "password: ", 10) == 0) {
+            sscanf(line + 10, "%100s", stored_password);
+            password_found = 1;
+            break;
+        }
+    }
+    fclose(file);
+    
+    if (!password_found || strcmp(current_password, stored_password) != 0) {
+        printf("Неверный текущий пароль!\n");
+        return 0;
+    }
+    
+    // Запрашиваем новый пароль
+    printf("Введите новый пароль: ");
+    scanf("%100s", new_password);
+    
+    printf("Подтвердите новый пароль: ");
+    scanf("%100s", confirm_password);
+    
+    if (strcmp(new_password, confirm_password) != 0) {
+        printf("Пароли не совпадают!\n");
+        return 0;
+    }
+    
+    if (strcmp(new_password, current_password) == 0) {
+        printf("Новый пароль должен отличаться от текущего!\n");
+        return 0;
+    }
+    
+    // Обновляем файл с новым паролем
+    char temp_filename[256];
+    snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", filename);
+    
+    FILE *input = fopen(filename, "r");
+    FILE *output = fopen(temp_filename, "w");
+    
+    if (!input || !output) {
+        printf("Ошибка при открытии файлов\n");
+        if (input) fclose(input);
+        if (output) fclose(output);
+        return 0;
+    }
+    
+    // Копируем все строки, заменяя пароль
+    while (fgets(line, sizeof(line), input)) {
+        if (strncmp(line, "password: ", 10) == 0) {
+            fprintf(output, "password: %s\n", new_password);
+        } else {
+            fputs(line, output);
+        }
+    }
+    
+    fclose(input);
+    fclose(output);
+    
+    // Заменяем старый файл новым
+    if (remove(filename) != 0) {
+        printf("Ошибка при удалении старого файла\n");
+        remove(temp_filename);
+        return 0;
+    }
+    
+    if (rename(temp_filename, filename) != 0) {
+        printf("Ошибка при переименовании файла\n");
+        return 0;
+    }
+    
+    printf("Пароль успешно изменен!\n");
+    return 1;
 }

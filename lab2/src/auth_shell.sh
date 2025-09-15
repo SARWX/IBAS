@@ -6,7 +6,7 @@ while read -e -p "auth_shell> " cmd; do
     case "$cmd" in
         exit)
             echo "Выход из оболочки"
-            rm /tmp/.auth_shell/.current_user >> /dev/null 2>&1
+            rm /home/tnovikov/study/iu6/IBAS/lab2/.auth_shell/.current_user >> /dev/null 2>&1
             break
             ;;
         "")
