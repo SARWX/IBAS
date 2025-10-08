@@ -277,13 +277,17 @@ int change_password() {
     
     char line[256];
     char stored_password[MAX_LENGTH] = {0};
+    char middle_name[MAX_LENGTH] = {0};
     int password_found = 0;
+    int middle_name_found = 0;
     
     while (fgets(line, sizeof(line), file)) {
         if (strncmp(line, "password: ", 10) == 0) {
             sscanf(line + 10, "%100s", stored_password);
             password_found = 1;
-            break;
+        } else if (strncmp(line, "middle_name: ", 13) == 0) {
+            sscanf(line + 13, "%100s", middle_name);
+            middle_name_found = 1;
         }
     }
     fclose(file);
@@ -309,6 +313,16 @@ int change_password() {
         printf("Новый пароль должен отличаться от текущего!\n");
         return 0;
     }
+
+    if (middle_name_found && strcmp(new_password, middle_name) == 0) {
+        printf("Пароль не должен совпадать с отчеством!\n");
+        return 0;
+    }
+    if (strlen(new_password) < 9) {
+        printf("Пароль должен быть не меньше 9 символов\n");
+        return 0;
+    }
+        
     
     // Обновляем файл с новым паролем
     char temp_filename[256];

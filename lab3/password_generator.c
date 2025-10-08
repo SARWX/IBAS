@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <locale.h>
 #include <wchar.h>
+#include <time.h>
 
 #define BUF_SIZE 100
 #define L 7
@@ -39,13 +40,13 @@ wchar_t generate_symbol(uint64_t hash_id) {
 
 int main() {
 	wchar_t password[L + 1];
-	uint64_t random = 0;
+	time_t unix_timestamp;
 
 	setlocale(LC_ALL, "ru_RU.UTF-8");
-	random = rand();
+	unix_timestamp = time(NULL);
 
 	for(int i = 0; i < L; i++)
-		password[i] = generate_symbol(random);
+		password[i] = generate_symbol((uint64_t)unix_timestamp);
 	password[L] = L'\0';
 
 	wprintf(L"Ваш пароль: %ls\n", password);

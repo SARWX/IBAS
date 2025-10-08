@@ -48,6 +48,12 @@ static int is_valid_date(const char *date) {
     return 1;
 }
 
+is_valid_password(const char *password) {
+    if (strlen(password) < 9)
+        return 0;
+    return 1;
+}
+
 // Функция для вывода информации о пользователе
 void print_user(const User *user) {
     printf("\n=== ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ ===\n");
@@ -63,7 +69,7 @@ User registration_get_data() {
     User user;
     printf("=== РЕГИСТРАЦИЯ ПОЛЬЗОВАТЕЛЯ ===\n");
     INPUT_FIELD(user.username, "Введите username: ");
-    INPUT_FIELD(user.password, "Введите пароль: ");
+    INPUT_VALIDATED(user.password, "Введите пароль: ", is_valid_password, "пароль должен быть не менее 9 символов\n");
     INPUT_FIELD(user.first_name, "Введите имя: ");
     INPUT_FIELD(user.last_name, "Введите фамилию: ");
     INPUT_FIELD(user.middle_name, "Введите отчество: ");
